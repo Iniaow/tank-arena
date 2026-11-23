@@ -791,9 +791,16 @@
   $('save-strategy').addEventListener('click', () => void validateEditor(true));
   $('guide-example').textContent = EXAMPLE;
   $('copy-guide').addEventListener('click', () => void copyGuide());
-  $('open-guide').addEventListener('click', () => {
+  function openGuide() {
     $('copy-message').textContent = '';
     $('guide-dialog').showModal();
+  }
+
+  $('open-guide').addEventListener('click', openGuide);
+  const rosterNotice = $('roster-notice');
+  $('roster-notice-guide')?.addEventListener('click', () => {
+    rosterNotice.close();
+    openGuide();
   });
   $('open-history').addEventListener('click', () => {
     historyMessage('');
@@ -815,5 +822,6 @@
   renderPreview();
   controls();
   if (!canStore) message('浏览器未提供可用的本地存储，记录可能仅在本页可见。', true);
+  if (publishedSetup && ['http:', 'https:'].includes(location.protocol)) rosterNotice?.showModal();
   requestAnimationFrame(frame);
 })();

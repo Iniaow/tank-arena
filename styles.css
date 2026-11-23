@@ -139,6 +139,8 @@ select { appearance: none; padding-right: 28px; background-image: url("data:imag
 
 dialog { width: min(calc(100vw - 28px), 705px); max-height: min(88vh, 850px); border-radius: 14px; border: 1px solid #b5af9d; color: var(--text); padding: 0; background: var(--surface); box-shadow: 0 20px 70px #312a224d; }
 dialog::backdrop { background: #322a2070; backdrop-filter: blur(3px); }
+#roster-notice { width: min(calc(100vw - 28px), 450px); }
+.roster-notice-actions { justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
 .dialog-inner { padding: 22px; }
 .dialog-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
 .dialog-header h2 { font-size: 24px; line-height: 1.2; overflow-wrap: anywhere; }

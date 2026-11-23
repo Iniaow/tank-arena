@@ -122,6 +122,19 @@
     </div>
   </main>
 
+  <dialog id="roster-notice" aria-labelledby="roster-notice-heading" aria-describedby="roster-notice-message">
+    <div class="dialog-inner">
+      <header class="dialog-header">
+        <h2 id="roster-notice-heading">关于默认阵容</h2>
+      </header>
+      <p id="roster-notice-message">默认阵容是作者测试时使用的阵容，你可以把「策略指南」里的提示词发给自己的 AI，再用它生成的代码配置自己的阵容。</p>
+      <div class="dialog-actions roster-notice-actions">
+        <button type="button" class="button button-outline" data-close autofocus>知道了</button>
+        <button type="button" class="button button-primary" id="roster-notice-guide">查看策略指南</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="strategy-dialog" aria-labelledby="strategy-heading">
     <div class="dialog-inner">
       <header class="dialog-header">
