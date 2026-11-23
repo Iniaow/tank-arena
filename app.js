@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   'use strict';
 
   const { Battle, generateMap, sanitize, STEP, DURATION, IDLE } = ArenaEngine;
@@ -8,6 +8,18 @@
   const STORE = 'ai-tank-arena.v1';
   const MATCH_PREFIX = STORE + '.match.';
   const MAX_CODE = 64 * 1024;
+  const SETUP_VERSION = 2;
+  // These are hashes of the settings of the tanks shipped in earlier public rosters.
+  const LEGACY_ROSTER_HASHES = new Map([
+    [5, new Set([
+      '2a084a997f8963c55360162e3009fc724041cd3e69bed1872b6f3299d9f3560b',
+      '6c8fc7fd731ee9cdb8a7b1209e65c6d640c3680e304890293f21539499b83b0d',
+    ])],
+    [6, new Set([
+      '434d2701c714299f952f975d69c84f14707f0dca0e3c91e5ed467a37fbd4b222',
+      '2e7dc9194ef4535d1a0b1158dc892cde1d63b08d733f5f70f2bee9ae9998a9cb',
+    ])],
+  ]);
   const $ = (id) => document.getElementById(id);
   const tankCount = $('tank-count');
   const roundCount = $('match-rounds');
@@ -68,7 +80,11 @@
   const stockSetup = { count: 4, rounds: 5, entries: defaults };
   const publishedRoster = globalThis.ArenaPublishedRoster;
   const publishedSetup = publishedRoster?.formatVersion === 1 ? loadSetup(publishedRoster, stockSetup) : null;
-  const config = loadSetup(read('setup', null), publishedSetup ?? stockSetup);
+  const defaultSetup = publishedSetup ?? stockSetup;
+  const savedSetup = read('setup', null);
+  const setupOverrides = await migrateSavedSetup(savedSetup);
+  const config = loadSetup(setupOverrides, defaultSetup);
+  if (setupOverrides !== savedSetup) store('setup', setupOverrides);
   const unsavedHistory = new Map();
   let session = null;
   let battle;
@@ -79,6 +95,53 @@
   let lastFrame = performance.now();
   let displayedTenth = -1;
   let speed = 1;
+
+  function sameTankSettings(left, right) {
+    return left?.name === right.name && left.type === right.type &&
+      left.code === right.code && left.version === right.version;
+  }
+
+  async function migrateSavedSetup(saved) {
+    if (!publishedSetup || saved?.formatVersion === SETUP_VERSION ||
+        !Array.isArray(saved?.entries) || !crypto.subtle) return saved;
+
+    const encoder = new TextEncoder();
+    try {
+      for (const [count, hashes] of LEGACY_ROSTER_HASHES) {
+        if (saved.entries.length < count) continue;
+        const fields = saved.entries.slice(0, count).map((entry) => [
+          entry?.name, entry?.type, entry?.code, entry?.version
+        ]);
+        const bytes = await crypto.subtle.digest('SHA-256', encoder.encode(JSON.stringify(fields)));
+        const digest = Array.from(new Uint8Array(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        if (!hashes.has(digest)) continue;
+        return {
+          formatVersion: SETUP_VERSION,
+          count: saved.count === count ? undefined : saved.count,
+          rounds: saved.rounds === 5 ? undefined : saved.rounds,
+          entries: saved.entries.slice(0, defaults.length).map((entry, index) => (
+            index < count || sameTankSettings(entry, defaults[index]) ? null : entry
+          ))
+        };
+      }
+    } catch {
+      // A failed fingerprint check should leave the visitor's saved setup available.
+    }
+    return saved;
+  }
+
+  function saveSetup() {
+    store('setup', {
+      formatVersion: SETUP_VERSION,
+      count: config.count === defaultSetup.count ? undefined : config.count,
+      rounds: config.rounds === defaultSetup.rounds ? undefined : config.rounds,
+      entries: config.entries.map((entry, index) => {
+        if (sameTankSettings(entry, defaultSetup.entries[index])) return null;
+        const { name, type, code, version } = entry;
+        return { name, type, code, version };
+      })
+    });
+  }
 
   function seed() {
     return crypto.getRandomValues(new Uint32Array(1))[0];
@@ -234,7 +297,7 @@
   function applySetup() {
     config.count = Number(tankCount.value);
     config.rounds = Number(roundCount.value);
-    store('setup', config);
+    saveSetup();
     renderSetup();
     renderPreview();
   }
@@ -345,7 +408,7 @@
     if (!commit) return;
     if (entry.type !== type || entry.code !== code) entry.version++;
     Object.assign(entry, { name, type, code });
-    store('setup', config);
+    saveSetup();
     editor.close();
     renderSetup();
     renderPreview();
