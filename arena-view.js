@@ -200,7 +200,7 @@
         ctx.moveTo(bullet.x, bullet.y);
         ctx.lineTo(bullet.x - bullet.vx * 0.029, bullet.y - bullet.vy * 0.029);
         ctx.stroke();
-        const radius = Math.max(2.6, 1.2 / scale);
+        const radius = Math.max(3.25, 1.5 / scale);
         ctx.fillStyle = '#fff9e9';
         ctx.beginPath();
         ctx.arc(bullet.x, bullet.y, radius + 0.85 / scale, 0, 2 * Math.PI);
