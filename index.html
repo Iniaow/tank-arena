@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="在随机迷宫中比较不同 JavaScript 策略的坦克竞技场。">
+  <title>AI 坦克竞技场</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="engine.js"></script>
+  <script defer src="strategies.js"></script>
+  <script defer src="arena-view.js"></script>
+  <script defer src="published-roster.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#main" aria-label="AI 坦克竞技场">
+        <span class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="5.5" y="7.5" width="13" height="10" rx="2"/><path d="M3 8v9m18-9v9M12 12V3m-3 9h6M8 20h8"/>
+          </svg>
+        </span>
+        <h1>AI 坦克竞技场</h1>
+      </a>
+      <nav class="nav-actions" aria-label="辅助功能">
+        <button class="button button-text" id="open-guide" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 7-5 5 5 5m8-10 5 5-5 5m-2-13-4 16"/></svg>策略指南
+        </button>
+        <button class="button button-outline" id="open-history" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 1 3.5 7.1M3 4v8h8m1-5v5l3 2"/></svg>历史记录
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="page">
+    <div class="layout">
+      <div class="arena-column">
+        <section class="panel arena-panel" aria-labelledby="arena-heading">
+          <div class="arena-toolbar">
+            <header class="panel-header arena-header">
+              <div class="panel-title">
+                <span class="target-icon" aria-hidden="true">◎</span>
+                <h2 id="arena-heading">战场</h2>
+                <span id="arena-status" class="status-pill" data-state="ready">待机</span>
+              </div>
+              <span class="round-mark"><span class="round-caption">局数</span><strong id="round-display">0 / 5</strong></span>
+            </header>
+            <div class="control-bar">
+              <button id="start-match" class="button button-primary" type="button"><span aria-hidden="true">▶</span><span id="start-text">开始对战</span></button>
+              <button id="pause-match" class="button button-outline" type="button" disabled><span aria-hidden="true">Ⅱ</span><span id="pause-text">暂停</span></button>
+              <button id="skip-round" class="button button-outline" type="button" disabled><span aria-hidden="true">⏭</span>跳过本局</button>
+              <button id="end-match" class="button button-danger" type="button" disabled>结束比赛</button>
+              <label class="speed-control">倍速
+                <select id="speed-select" aria-label="对战倍速">
+                  <option value="1">1×</option><option value="2">2×</option><option value="4">4×</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div class="canvas-shell">
+            <canvas id="arena-canvas" width="960" height="640" role="img" aria-label="坦克随机迷宫战场"></canvas>
+            <div id="arena-overlay" class="arena-overlay" hidden>
+              <div class="overlay-card">
+                <span id="overlay-label" class="overlay-label"></span>
+                <strong id="overlay-title"></strong>
+                <span id="overlay-description"></span>
+              </div>
+            </div>
+          </div>
+          <div class="arena-hud">
+            <div class="hud-item"><span>地图</span><strong id="map-size">中型</strong><span id="map-id" class="hud-secondary"></span></div>
+            <div class="hud-item"><span>存活</span><strong id="alive-count">4 / 4</strong></div>
+            <div class="hud-item timer"><span>剩余</span><strong id="round-timer">45.0 s</strong></div>
+          </div>
+        </section>
+        <div id="match-message" class="match-message" role="status"></div>
+      </div>
+
+      <aside class="sidebar" aria-labelledby="setup-heading">
+        <section class="panel" aria-labelledby="setup-heading">
+          <header class="panel-header">
+            <div class="panel-title"><span class="section-line" aria-hidden="true"></span><h2 id="setup-heading">参赛配置</h2></div>
+          </header>
+          <div class="setup-body">
+            <div class="setup-controls">
+              <label>坦克数量
+                <select id="tank-count">
+                  <option value="2">2 辆</option><option value="3">3 辆</option><option value="4" selected>4 辆</option>
+                  <option value="5">5 辆</option><option value="6">6 辆</option><option value="7">7 辆</option><option value="8">8 辆</option>
+                </select>
+              </label>
+              <label>比赛局数
+                <select id="match-rounds">
+                  <option value="1">1 局</option><option value="5" selected>5 局</option><option value="10">10 局</option><option value="20">20 局</option>
+                </select>
+              </label>
+            </div>
+            <ul class="tank-list" id="tank-list" aria-label="参赛坦克"></ul>
+            <div class="roster-actions">
+              <button id="export-roster" class="button button-outline" type="button">导出发布阵容</button>
+              <button id="load-published-roster" class="button button-outline" type="button" hidden>载入发布阵容</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="panel scoreboard" aria-labelledby="score-heading">
+        <header class="panel-header">
+          <div class="panel-title"><span class="section-line score-line" aria-hidden="true"></span><h2 id="score-heading">本场积分</h2></div>
+          <span class="score-rule">胜局 +3 · 击杀 +1</span>
+        </header>
+        <div class="score-content">
+          <table class="score-table">
+            <thead><tr><th scope="col">坦克</th><th scope="col">胜局</th><th scope="col">击杀</th><th scope="col">总分</th></tr></thead>
+            <tbody id="score-list"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <dialog id="strategy-dialog" aria-labelledby="strategy-heading">
+    <div class="dialog-inner">
+      <header class="dialog-header">
+        <div><span class="dialog-kicker">参赛配置</span><h2 id="strategy-heading">编辑坦克</h2></div>
+        <button type="button" class="button icon-button" data-close aria-label="关闭">×</button>
+      </header>
+      <div class="editor-fields">
+        <label>坦克名称<input id="tank-name" type="text" maxlength="24" placeholder="给坦克取个名字"></label>
+        <label>策略来源<select id="strategy-type"></select></label>
+      </div>
+      <div class="code-header">
+        <label for="strategy-code">JavaScript 策略</label>
+        <div class="code-actions">
+          <button type="button" class="button button-text" id="load-example">载入示例</button>
+          <button type="button" class="button button-outline" id="import-code">导入 .js</button>
+          <input type="file" id="strategy-file" accept=".js,.mjs,text/javascript,application/javascript" hidden>
+        </div>
+      </div>
+      <textarea id="strategy-code" aria-describedby="editor-note" rows="11" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div id="editor-note" class="editor-note">定义一个同步的 <code>function decide(state)</code>，返回移动、转向和开火指令。炮筒随车身转动。</div>
+      <div class="dialog-footer">
+        <p id="strategy-message" class="strategy-message" role="status"></p>
+        <div class="dialog-actions">
+          <button id="check-strategy" type="button" class="button button-outline">检查策略</button>
+          <button id="save-strategy" type="button" class="button button-primary">保存坦克</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="guide-dialog" aria-labelledby="guide-heading">
+    <div class="dialog-inner">
+      <header class="dialog-header">
+        <div><span class="dialog-kicker">JavaScript API</span><h2 id="guide-heading">策略指南</h2></div>
+        <button type="button" class="button icon-button" data-close aria-label="关闭">×</button>
+      </header>
+      <p>为每辆坦克提供一个 <code>function decide(state)</code>。策略在每局开始时重新载入，每隔 0.125 秒收到一次战场快照。函数可以用文件内的变量保存本局状态。</p>
+      <div class="guide-table">
+        <table>
+          <thead><tr><th scope="col">输入</th><th scope="col">数据</th></tr></thead>
+          <tbody>
+            <tr><td><code>state.self</code><br><code>state.tanks</code></td><td>自己和所有坦克。每辆有 <code>id, x, y, angle, turret, cooldown, alive, kills</code>。<code>angle</code> 是车身和炮筒的共同朝向。<code>turret</code> 是为旧策略保留的同一读数。冷却时间以秒计。</td></tr>
+            <tr><td><code>state.bullets</code></td><td>场上弹丸，每枚有 <code>id, ownerId, x, y, vx, vy, bounces</code>。速度单位为游戏像素每秒。</td></tr>
+            <tr><td><code>state.map</code></td><td><code>id, width, height, cols, rows, cellSize, wallWidth, walls, exits</code>。<code>walls</code> 是墙的中心线段数组 <code>[x1,y1,x2,y2]</code>。<code>exits[i]</code> 是第 i 个格子能直接进入的相邻格子编号，格子按行从 0 开始编号。</td></tr>
+            <tr><td><code>state.tick</code><br><code>state.round</code><br><code>state.timeLeft</code></td><td>120 Hz 的模拟帧编号、从 1 开始的局数、本局剩余秒数。坐标原点在左上角，向右为 0 弧度，顺时针为正。</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>返回 <code>{ throttle, turn, fire }</code>。<code>throttle</code> 和 <code>turn</code> 取 −1 至 1，负值表示倒车和逆时针转向。用 <code>turn</code> 把车身转向目标，再用 <code>fire: true</code> 沿正前方开火。三项均可省略。旧策略返回的 <code>aim</code> 会被忽略。</p>
+      <p>弹丸会反弹，命中一次即淘汰。反弹自击无分。每枚弹丸最长存在 8 个游戏秒，每辆坦克最多同时有 5 枚弹丸在场。45 秒仍有多辆幸存时判平局，保留击杀分。脚本在隔离环境同步运行，可使用标准 JavaScript 和 <code>Math</code>。每次决策时限为 240 毫秒，报错或超时的坦克退出当前局。</p>
+      <div class="guide-example"><pre id="guide-example"></pre><button id="copy-guide" type="button" class="button button-outline">复制策略提示词</button><span id="copy-message" role="status"></span></div>
+    </div>
+  </dialog>
+
+  <dialog id="history-dialog" aria-labelledby="history-heading">
+    <div class="dialog-inner">
+      <header class="dialog-header">
+        <div><span class="dialog-kicker">比赛档案</span><h2 id="history-heading">历史记录</h2></div>
+        <button type="button" class="button icon-button" data-close aria-label="关闭">×</button>
+      </header>
+      <div class="history-toolbar">
+        <p>记录保存在当前浏览器。</p>
+        <button id="clear-history" class="button button-danger" type="button" disabled>清空历史</button>
+      </div>
+      <div id="history-message" class="history-message" role="status"></div>
+      <div id="history-list" class="history-list"></div>
+    </div>
+  </dialog>
+</body>
+</html>
